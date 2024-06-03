@@ -1,7 +1,10 @@
 const dropList = document.querySelectorAll("form select"),
-fromCurrency = document.querySelector(".from select"),
-toCurrency = document.querySelector(".to select"),
-getButton = document.querySelector("form button");
+    fromCurrency = document.querySelector(".from select"),
+    toCurrency = document.querySelector(".to select"),
+    getButton = document.querySelector("form button"),
+    exchangeRateTxt = document.querySelector("form .exchange-rate");
+
+let exchangeRates = {};
 
 for (let i = 0; i < dropList.length; i++) {
     for(let currency_code in country_list){
@@ -10,6 +13,7 @@ for (let i = 0; i < dropList.length; i++) {
         dropList[i].insertAdjacentHTML("beforeend", optionTag);
     }
     dropList[i].addEventListener("change", e =>{
+        loadFlag(e.target);
     });
 }
 
@@ -39,23 +43,44 @@ exchangeIcon.addEventListener("click", ()=>{
     loadFlag(fromCurrency);
     loadFlag(toCurrency); 
     getExchangeRate(); 
-})
+});
+
+const socket = new WebSocket('ws://localhost:3000');
+
+socket.addEventListener('open', function (event) {
+    console.log('Connected to WebSocket server');
+});
+
+socket.addEventListener('message', function (event) {
+    const data = JSON.parse(event.data);
+    if (data.type === 'exchangeRate') {
+        const amount = document.querySelector("form input").value;
+        exchangeRateTxt.innerText = `${amount} ${fromCurrency.value} = ${data.rate} ${toCurrency.value}`;
+    } else if (data.type === 'error') {
+        exchangeRateTxt.innerText = data.message;
+    } else if (data.type === 'ratesUpdate') {
+        exchangeRates = data.rates;
+        console.log('Exchange rates updated:', exchangeRates);
+    }
+});
 
 function getExchangeRate(){
-    const amount = document.querySelector("form input");
-    const exchangeRateTxt = document.querySelector("form .exchange-rate");
-    let amountVal = amount.value;
+    const amount = document.querySelector("form input").value;
+    let amountVal = amount;
     if(amountVal == "" || amountVal == "0"){
-        amount.value = "";
         amountVal = 1;
     }
-    exchangeRateTxt.innerText = "Getting exchange rate...";
-    let url = `https://v6.exchangerate-api.com/v6/811f483d4bff3f9925cdaa95/latest/${fromCurrency.value}`;
-    fetch(url).then(response => response.json()).then(result =>{
-        let exchangeRate = result.conversion_rates[toCurrency.value];
-        let totalExRate = (amountVal * exchangeRate).toFixed(2); 
-        exchangeRateTxt.innerText = `${amountVal} ${fromCurrency.value} = ${totalExRate} ${toCurrency.value}`;
-    }).catch(() =>{ 
-        exchangeRateTxt.innerText = "Something went wrong";
-    });
+
+    const request = {
+        type: 'getExchangeRate',
+        fromCurrency: fromCurrency.value,
+        toCurrency: toCurrency.value,
+        amount: amountVal
+    };
+
+    if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify(request));
+    } else {
+        console.error('WebSocket connection is not open');
+    }
 }
