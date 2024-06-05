@@ -56,6 +56,7 @@ socket.addEventListener('message', function (event) {
     if (data.type === 'exchangeRate') {
         const amount = document.querySelector("form input").value;
         exchangeRateTxt.innerText = `${amount} ${fromCurrency.value} = ${data.rate} ${toCurrency.value}`;
+        displayConvertedAmounts(data.rate);
     } else if (data.type === 'error') {
         exchangeRateTxt.innerText = data.message;
     } else if (data.type === 'ratesUpdate') {
@@ -84,3 +85,50 @@ function getExchangeRate(){
         console.error('WebSocket connection is not open');
     }
 }
+
+
+let btc = document.getElementById("bitcoin");
+let ltc = document.getElementById("litecoin");
+let eth = document.getElementById("ethereum");
+let doge = document.getElementById("dogecoin");
+
+let liveprice = {
+    "async": true,
+    "scroosDomain": true,
+    "url": "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin%2Clitecoin%2Cethereum%2Cdogecoin&vs_currencies=usd",
+
+    "method": "GET",
+    "headers": {}
+}
+
+$.ajax(liveprice).done(function (response){
+    btc.innerHTML = response.bitcoin.usd;
+    ltc.innerHTML = response.litecoin.usd;
+    eth.innerHTML = response.ethereum.usd;
+    doge.innerHTML = response.dogecoin.usd;
+
+});
+
+const convertedBitcoin = document.getElementById("convertedBitcoin");
+const convertedLitecoin = document.getElementById("convertedLitecoin");
+const convertedEthereum = document.getElementById("convertedEthereum");
+const convertedDogecoin = document.getElementById("convertedDogecoin");
+
+function displayConvertedAmounts(amount) {
+    if (!amount || isNaN(amount)) return;
+
+    convertedBitcoin.textContent = (amount / btcPrice).toFixed(8); // Display in Bitcoin
+    convertedLitecoin.textContent = (amount / ltcPrice).toFixed(8); // Display in Litecoin
+    convertedEthereum.textContent = (amount / ethPrice).toFixed(8); // Display in Ethereum
+    convertedDogecoin.textContent = (amount / dogePrice).toFixed(8); // Display in Dogecoin
+}
+
+let btcPrice, ltcPrice, ethPrice, dogePrice;
+
+$.ajax(liveprice).done(function (response) {
+    btcPrice = response.bitcoin.usd;
+    ltcPrice = response.litecoin.usd;
+    ethPrice = response.ethereum.usd;
+    dogePrice = response.dogecoin.usd;
+});
+
